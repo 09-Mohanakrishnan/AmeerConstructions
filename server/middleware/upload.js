@@ -1,6 +1,5 @@
 import multer from 'multer';
 import { v2 as cloudinary } from 'cloudinary';
-import { CloudinaryStorage } from 'multer-storage-cloudinary';
 import dotenv from 'dotenv';
 import path from 'path';
 import { fileURLToPath } from 'url';
@@ -18,15 +17,8 @@ cloudinary.config({
   api_secret: process.env.CLOUDINARY_API_SECRET,
 });
 
-// Configure Storage
-const storage = new CloudinaryStorage({
-  cloudinary: cloudinary,
-  params: {
-    folder: 'ameer-constructions',
-    allowed_formats: ['jpg', 'png', 'jpeg', 'webp', 'svg'],
-    transformation: [{ width: 1200, height: 1200, crop: 'limit' }], // Professional auto-resize
-  },
-});
+// Configure Storage (In-Memory for streaming to Cloudinary)
+const storage = multer.memoryStorage();
 
 const upload = multer({
   storage: storage,
@@ -34,3 +26,4 @@ const upload = multer({
 });
 
 export default upload;
+export { cloudinary };

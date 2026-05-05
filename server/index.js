@@ -12,7 +12,7 @@ dotenv.config({ path: path.join(__dirname, '..', '.env') });
 
 import connectDB from './config/db.js';
 import errorHandler from './middleware/errorHandler.js';
-import upload from './middleware/upload.js';
+import upload, { cloudinary } from './middleware/upload.js';
 import { protect } from './middleware/auth.js';
 
 // Routes
@@ -50,19 +50,45 @@ app.use('/api/enquiries', enquiryRoutes);
 app.use('/api/newsletter', newsletterRoutes);
 app.use('/api/site-visits', siteVisitRoutes);
 
+// Helper for stream upload
+const streamUpload = (buffer) => {
+  return new Promise((resolve, reject) => {
+    const stream = cloudinary.uploader.upload_stream(
+      { 
+        folder: 'ameer-constructions',
+        allowed_formats: ['jpg', 'png', 'jpeg', 'webp', 'svg'],
+        transformation: [{ width: 1200, height: 1200, crop: 'limit' }]
+      },
+      (error, result) => {
+        if (result) resolve(result);
+        else reject(error);
+      }
+    );
+    stream.end(buffer);
+  });
+};
+
 // File Upload Endpoint
-app.post('/api/upload', protect, upload.single('image'), (req, res) => {
-  if (req.file) {
-    // Cloudinary returns the full URL in .path
-    res.json({ filePath: req.file.path });
-  } else {
-    res.status(400).json({ message: 'No file uploaded' });
+app.post('/api/upload', protect, upload.single('image'), async (req, res) => {
+  try {
+    if (!req.file) return res.status(400).json({ message: 'No file uploaded' });
+    const result = await streamUpload(req.file.buffer);
+    res.json({ filePath: result.secure_url });
+  } catch (error) {
+    res.status(500).json({ message: 'Image upload failed: ' + error.message });
   }
 });
 
-app.post('/api/upload/multiple', protect, upload.array('images', 10), (req, res) => {
-  const filePaths = req.files.map((file) => file.path);
-  res.json({ filePaths });
+app.post('/api/upload/multiple', protect, upload.array('images', 10), async (req, res) => {
+  try {
+    if (!req.files || req.files.length === 0) return res.status(400).json({ message: 'No files uploaded' });
+    const uploadPromises = req.files.map(file => streamUpload(file.buffer));
+    const results = await Promise.all(uploadPromises);
+    const filePaths = results.map(result => result.secure_url);
+    res.json({ filePaths });
+  } catch (error) {
+    res.status(500).json({ message: 'Bulk upload failed: ' + error.message });
+  }
 });
 
 // Serve Frontend in Production
