@@ -1,15 +1,17 @@
 import tailwindcss from '@tailwindcss/vite';
 import react from '@vitejs/plugin-react';
 import path from 'path';
-import {defineConfig, loadEnv} from 'vite';
+import { fileURLToPath } from 'url';
+import { defineConfig, loadEnv } from 'vite';
 
-export default defineConfig(({mode}) => {
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
+
+export default defineConfig(({ mode }) => {
   const env = loadEnv(mode, '.', '');
+
   return {
     plugins: [react(), tailwindcss()],
-    define: {
-      'process.env.GEMINI_API_KEY': JSON.stringify(env.GEMINI_API_KEY),
-    },
     resolve: {
       alias: {
         '@': path.resolve(__dirname, '.'),
@@ -32,8 +34,18 @@ export default defineConfig(({mode}) => {
     build: {
       rollupOptions: {
         output: {
-          manualChunks: {
-            vendor: ['react', 'react-dom', 'react-router-dom', 'motion', 'lucide-react', 'axios'],
+          manualChunks(id) {
+            if (!id.includes('node_modules')) return;
+
+            if (id.includes('react') || id.includes('react-dom') || id.includes('react-router-dom')) {
+              return 'react-vendor';
+            }
+
+            if (id.includes('motion')) return 'motion';
+            if (id.includes('lucide-react')) return 'icons';
+            if (id.includes('axios')) return 'network';
+
+            return 'vendor';
           },
         },
       },
