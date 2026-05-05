@@ -9,6 +9,7 @@
     "client": "vite --port=3000 --host=0.0.0.0",
     "server": "node --watch server/index.js",
     "build": "vite build",
+    "postinstall": "npm run build",
     "preview": "vite preview",
     "seed": "node server/seed.js",
     "clean": "rm -rf dist",
